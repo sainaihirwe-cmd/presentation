@@ -1,0 +1,21 @@
+# Render blueprint: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: slidegen
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # one worker: Claude progress is kept in memory, threads handle concurrent visitors
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 120
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.1
+      - key: SECRET_KEY
+        generateValue: true
+      # optional: turns on Claude AI mode (set it in the Render dashboard, never in git)
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # optional but recommended with an API key: visitors must enter this password
+      - key: SITE_PASSWORD
+        sync: false

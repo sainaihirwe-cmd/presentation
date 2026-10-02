@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Writing your slides · SlideGen</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body class="home">
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('index') }}"><span class="logo">▣</span> SlideGen</a>
+  </header>
+
+  <main class="hero progress-page">
+    <p class="eyebrow">✨ Claude is writing your presentation</p>
+    <h1 id="deck-title" class="grad">Planning the story…</h1>
+    <p class="lead prompt-echo">“{{ job.prompt|truncate(160) }}”</p>
+
+    <div class="bar"><i id="bar"></i></div>
+    <div class="bar-meta"><span id="status">Starting Claude…</span><span id="elapsed">0 s</span></div>
+
+    <ol class="live-slides" id="slides"></ol>
+
+    <div class="alert" id="error" hidden></div>
+    <a class="btn" id="retry" href="{{ url_for('index', tab='prompt') }}" hidden>← Try again</a>
+  </main>
+
+<script>
+  const icons = {section: '📑', bullets: '•', cards: '▦', stats: '📊', table: '▤', statement: '❝'};
+  const list = document.getElementById('slides'), bar = document.getElementById('bar');
+  const status = document.getElementById('status'), elapsed = document.getElementById('elapsed');
+  let shown = 0, start = Date.now();
+
+  setInterval(() => { elapsed.textContent = Math.round((Date.now() - start) / 1000) + ' s'; }, 250);
+
+  async function poll() {
+    let job;
+    try {
+      job = await (await fetch({{ url_for('job_status', job_id=job_id)|tojson }})).json();
+    } catch (e) { return setTimeout(poll, 1500); }   // server restarting: keep trying
+    start = Date.now() - job.elapsed * 1000;
+
+    if (job.title) document.getElementById('deck-title').textContent = job.title;
+    for (; shown < job.slides.length; shown++) {
+      const s = job.slides[shown], li = document.createElement('li');
+      li.innerHTML = `<span class="ico"></span><span class="t"></span><small></small>`;
+      li.querySelector('.ico').textContent = icons[s.layout] || '•';
+      li.querySelector('.t').textContent = s.title;
+      li.querySelector('small').textContent = s.layout;
+      list.appendChild(li);
+    }
+    const pct = job.state === 'done' ? 100 : Math.min(95, 5 + 90 * job.slides.length / Math.max(job.n, 1));
+    bar.style.width = pct + '%';
+
+    if (job.state === 'done') {
+      status.textContent = '✓ Done! Opening your slides…';
+      return setTimeout(() => location.href = job.url, 500);
+    }
+    if (job.state === 'error') {
+      bar.classList.add('failed');
+      status.textContent = 'Stopped';
+      const err = document.getElementById('error');
+      err.textContent = job.error; err.hidden = false;
+      document.getElementById('retry').hidden = false;
+      return;
+    }
+    status.textContent = !job.title ? 'Planning the story…'
+      : job.slides.length ? `Writing slide ${Math.min(job.slides.length + 1, job.n)} of ${job.n}…`
+      : 'Writing the opening…';
+    setTimeout(poll, 600);
+  }
+  poll();
+</script>
+</body>
+</html>

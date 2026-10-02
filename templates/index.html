@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SlideGen</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body class="home">
+  <header class="topbar">
+    <div class="brand"><span class="logo">▣</span> SlideGen</div>
+  </header>
+
+  <main class="hero">
+    <h1>Turn documents and ideas into<br><span class="grad">beautiful presentations</span></h1>
+    <p class="lead">Upload a document, or just describe the presentation you want and let AI write it.
+      Then add photos, videos and audio, edit any text, and present or download as PowerPoint.</p>
+
+    {% with messages = get_flashed_messages() %}
+      {% for m in messages %}<div class="alert">{{ m }}</div>{% endfor %}
+    {% endwith %}
+
+    <div class="mode-tabs" role="tablist">
+      <button type="button" data-tab="document" class="{% if tab != 'prompt' %}on{% endif %}">📄 From a document</button>
+      <button type="button" data-tab="prompt" class="{% if tab == 'prompt' %}on{% endif %}">✨ From a prompt (AI)</button>
+    </div>
+
+    <form action="{{ url_for('convert') }}" method="post" enctype="multipart/form-data"
+          data-panel="document" {% if tab == 'prompt' %}hidden{% endif %}>
+      <label class="drop" id="drop">
+        <input type="file" name="document" id="file" accept="{{ formats }}" required>
+        <div class="drop-icon">⇪</div>
+        <div class="drop-title" id="drop-title">Drop your document here or <u>browse</u></div>
+        <div class="drop-sub">Supported: {{ formats }} · up to 25 MB</div>
+      </label>
+      <input type="hidden" name="theme" class="theme-value">
+      <button type="submit" class="btn primary big">Generate slides →</button>
+    </form>
+
+    <form action="{{ url_for('create') }}" method="post" data-panel="prompt" class="prompt-form"
+          {% if tab != 'prompt' %}hidden{% endif %}>
+      <div class="engines">
+        <label class="engine">
+          <input type="radio" name="engine" value="wiki" {% if not has_claude %}checked{% endif %}>
+          <span><b>🌍 Free — research on Wikipedia</b>
+            <small>No account or key needed. Type a topic; slides and a cover photo are made in seconds.</small></span>
+        </label>
+        <label class="engine">
+          <input type="radio" name="engine" value="claude" {% if has_claude %}checked{% endif %}>
+          <span><b>✨ Claude AI
+              {% if has_cli and not has_key %}<em class="ok">uses your Claude login</em>
+              {% elif not has_claude %}<em>needs API key</em>{% endif %}</b>
+            <small>Writes an original deck from any idea (pitches, lessons, reports) with speaker notes.</small></span>
+        </label>
+      </div>
+
+      <label class="field"><span data-engine="wiki">Topic</span><span data-engine="claude">What is your presentation about?</span>
+        <textarea name="prompt" rows="3" maxlength="4000" required
+          data-ph-wiki="e.g. Solar energy · Photosynthesis · History of Rwanda · Climate change"
+          data-ph-claude="e.g. A pitch for a mobile app that helps Kigali farmers sell produce directly to restaurants. Cover the problem, solution, business model, market size, team and funding ask."></textarea>
+      </label>
+      <div class="row">
+        <label class="field">Slides
+          <select name="slides">
+            {% for n in [5, 8, 10, 12, 15, 20] %}<option {% if n == 10 %}selected{% endif %}>{{ n }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="field" data-engine="wiki">Language
+          <select name="lang">
+            {% for code, name in languages.items() %}<option value="{{ code }}">{{ name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="field" data-engine="wiki"></label>
+        <label class="field" data-engine="claude">Audience <small>(optional)</small>
+          <input type="text" name="audience" placeholder="e.g. investors, students" maxlength="120">
+        </label>
+        <label class="field" data-engine="claude">Tone <small>(optional)</small>
+          <select name="tone">
+            <option value="">Balanced</option><option>Professional and formal</option><option>Friendly and simple</option>
+            <option>Inspiring and persuasive</option><option>Academic and detailed</option><option>Fun and energetic</option>
+          </select>
+        </label>
+      </div>
+      <input type="hidden" name="theme" class="theme-value">
+      <button type="submit" class="btn primary big" id="create-btn">Create slides →</button>
+      <p class="drop-sub" data-engine="wiki">Takes a few seconds. Content comes from Wikipedia (CC BY-SA) and is credited on the last slide.</p>
+      <p class="drop-sub" data-engine="claude">Claude writes the whole deck in about 30–90 seconds.</p>
+    </form>
+
+    <form action="{{ url_for('set_key') }}" method="post" class="key-form" data-panel="prompt" data-engine="claude"
+          {% if tab != 'prompt' %}hidden{% endif %}>
+      {% if not has_claude and not allow_key_form %}
+        <div class="key-box">
+          Claude AI isn't switched on for this website yet. Use <b>🌍 Free</b> above,
+          which needs nothing. (Site owner: set <code>ANTHROPIC_API_KEY</code> in the server's
+          environment settings.)
+        </div>
+      {% elif not has_claude %}
+        <div class="key-box">
+          Claude needs either Claude Code signed in on this computer, or an Anthropic API key
+          (it starts with <code>sk-ant-</code>, from
+          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>).
+          Or pick <b>🌍 Free</b> above, which needs nothing.
+        </div>
+      {% endif %}
+      {# with a Claude login, the key is optional and stays folded away #}
+      {% if allow_key_form %}
+      <details {% if not has_claude %}open{% endif %}>
+        <summary>{{ "🔑 Change API key" if has_key else ("🔑 Optional: use an API key instead of your Claude login" if has_cli else "🔑 Paste your Anthropic API key") }}</summary>
+        <div class="row">
+          {# new-password stops the browser from auto-filling a saved password here #}
+          <input type="password" name="api_key" id="api-key" placeholder="sk-ant-…" autocomplete="new-password"
+                 autocapitalize="off" spellcheck="false" required>
+          <button type="button" class="btn" id="show-key" title="Show / hide what you pasted">👁</button>
+          <button class="btn">Save key</button>
+        </div>
+      </details>
+      {% endif %}
+    </form>
+
+    <h2 class="pick">Choose a design</h2>
+    <div class="themes">
+      {% for key, t in themes.items() %}
+      <label class="theme">
+        <input type="radio" name="theme-pick" value="{{ key }}" {% if key == default %}checked{% endif %}>
+        <div class="swatch" style="background:linear-gradient(135deg,#{{ t.hero1 }},#{{ t.hero2 }})">
+          <span style="background:#{{ t.bg }}"></span>
+          <i style="background:#{{ t.accent }}"></i><i style="background:#{{ t.accent2 }}"></i>
+        </div>
+        <div class="theme-name">{{ t.name }}</div>
+      </label>
+      {% endfor %}
+    </div>
+
+    <ol class="steps">
+      <li><b>Upload</b> a document or <b>describe</b> your idea</li>
+      <li><b>Add</b> photos, videos &amp; music, <b>edit</b> any text</li>
+      <li><b>Present</b> in the browser or <b>download .pptx</b></li>
+    </ol>
+  </main>
+
+<script>
+  // tabs (document / prompt) and engines (free Wikipedia / Claude)
+  const hasClaude = {{ has_claude|tojson }};
+  let tab = {{ (tab if tab == 'prompt' else 'document')|tojson }};
+  function update() {
+    const engine = document.querySelector('[name=engine]:checked').value;
+    document.querySelectorAll('.mode-tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
+    document.querySelectorAll('[data-panel]').forEach(p =>
+      p.hidden = p.dataset.panel !== tab || (p.dataset.engine && p.dataset.engine !== engine));
+    document.querySelectorAll('.prompt-form [data-engine]').forEach(el => el.hidden = el.dataset.engine !== engine);
+    const prompt = document.querySelector('[name=prompt]');
+    prompt.placeholder = prompt.dataset['ph' + (engine === 'wiki' ? 'Wiki' : 'Claude')];
+    const btn = document.getElementById('create-btn');
+    btn.disabled = engine === 'claude' && !hasClaude;
+    btn.textContent = btn.disabled ? 'Add an API key below first' : engine === 'wiki' ? '🌍 Create slides →' : '✨ Create with AI →';
+  }
+  const showKey = document.getElementById('show-key');   // absent on public servers
+  if (showKey) showKey.onclick = () => {
+    const k = document.getElementById('api-key');
+    k.type = k.type === 'password' ? 'text' : 'password';
+  };
+  document.querySelectorAll('.mode-tabs button').forEach(b => b.onclick = () => { tab = b.dataset.tab; update(); });
+  document.querySelectorAll('[name=engine]').forEach(r => r.onchange = update);
+  update();
+
+  // the design picker is shared by both forms
+  const syncTheme = () => {
+    const v = document.querySelector('[name=theme-pick]:checked').value;
+    document.querySelectorAll('.theme-value').forEach(i => i.value = v);
+  };
+  document.querySelectorAll('[name=theme-pick]').forEach(r => r.onchange = syncTheme);
+  syncTheme();
+
+  // drag & drop upload
+  const drop = document.getElementById('drop'), file = document.getElementById('file');
+  const title = document.getElementById('drop-title');
+  const show = () => { if (file.files[0]) { title.textContent = '📄 ' + file.files[0].name; drop.classList.add('has'); } };
+  file.addEventListener('change', show);
+  ['dragenter', 'dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', ev => { file.files = ev.dataTransfer.files; show(); });
+
+  // busy state on submit
+  document.querySelectorAll('form[data-panel]').forEach(f => f.addEventListener('submit', () => {
+    const b = f.querySelector('button[type=submit]');
+    if (!b) return;
+    b.disabled = true;
+    const wikiMode = f.classList.contains('prompt-form') && f.engine.value === 'wiki';
+    b.textContent = !f.classList.contains('prompt-form') ? 'Designing your slides…'
+      : wikiMode ? '🌍 Researching your topic…' : '✨ Writing your presentation…';
+  }));
+</script>
+</body>
+</html>

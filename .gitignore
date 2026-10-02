@@ -1,0 +1,15 @@
+# secrets
+.env
+
+# user data created while running the app
+uploads/
+outputs/
+
+# generated presentations
+*.pptx
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/

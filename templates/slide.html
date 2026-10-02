@@ -1,0 +1,106 @@
+{# One slide, mirrors the layouts in slidegen/renderer.py. Expects `s`, `n`, `deck`, `deck_id`.
+   data-edit="<field path>" marks text that can be edited in place on the deck page. #}
+<div class="slide l-{{ s.layout }}{% if s.style %} s-{{ s.style }}{% endif %}{% if s.layout == 'title' and deck.cover %} has-cover{% endif %}">
+{% if s.layout == "title" %}
+  {% if deck.cover %}<div class="cover-img" style="background-image:url('{{ url_for('media', deck_id=deck_id, name=deck.cover) }}')"></div><div class="cover-tint"></div>
+  {% else %}<div class="deco"></div>{% endif %}
+  <div class="rule"></div>
+  <h1 class="{% if s.title|length > 40 %}long{% endif %}" data-edit="title">{{ s.title }}</h1>
+  <p class="sub" data-edit="subtitle">{{ s.subtitle }}</p>
+
+{% elif s.layout == "agenda" %}
+  <div class="panel"><h2 data-edit="title">{{ s.title }}</h2></div>
+  <ol class="items {% if s['items']|length > 5 %}two{% endif %}">
+    {% for it in s['items'] %}<li><span>{{ '%02d' % loop.index }}</span><em data-edit="items.{{ loop.index0 }}">{{ it }}</em></li>{% endfor %}
+  </ol>
+
+{% elif s.layout == "section" %}
+  <div class="deco"></div>
+  <div class="num">{{ s.number }}</div>
+  <div class="rule"></div>
+  <h2 data-edit="title">{{ s.title }}</h2>
+  <p class="sub" data-edit="subtitle">{{ s.subtitle }}</p>
+
+{% elif s.layout == "bullets" %}
+  <h3 class="head" data-edit="title">{{ s.title }}</h3>
+  <ul class="bullets">{% for b in s.bullets %}<li data-edit="bullets.{{ loop.index0 }}">{{ b }}</li>{% endfor %}</ul>
+  <div class="edge"></div>
+
+{% elif s.layout == "cards" %}
+  <h3 class="head" data-edit="title">{{ s.title }}</h3>
+  <div class="cards c{{ s.cards|length }}">
+    {% for c in s.cards %}<div class="card"><i></i><b data-edit="cards.{{ loop.index0 }}.head">{{ c.head }}</b><p data-edit="cards.{{ loop.index0 }}.body">{{ c.body }}</p></div>{% endfor %}
+  </div>
+
+{% elif s.layout == "stats" %}
+  <h3 class="head" data-edit="title">{{ s.title }}</h3>
+  <div class="stats">
+    {% for st in s.stats %}<div class="stat"><b data-edit="stats.{{ loop.index0 }}.value">{{ st.value }}</b><i></i><p data-edit="stats.{{ loop.index0 }}.label">{{ st.label }}</p></div>{% endfor %}
+  </div>
+
+{% elif s.layout == "table" %}
+  <h3 class="head" data-edit="title">{{ s.title }}</h3>
+  <table>
+    <thead><tr>{% for c in s.rows[0] %}<th data-edit="rows.0.{{ loop.index0 }}">{{ c }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for r in s.rows[1:] %}{% set ri = loop.index %}<tr>{% for c in r %}<td data-edit="rows.{{ ri }}.{{ loop.index0 }}">{{ c }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+  </table>
+
+{% elif s.layout == "statement" %}
+  <div class="bar"></div>
+  <div class="quote">&ldquo;</div>
+  <p class="text" data-edit="text">{{ s.text }}</p>
+  <p class="by">— <span data-edit="title">{{ s.title }}</span></p>
+
+{% elif s.layout == "photo" %}
+  {% set img = url_for('media', deck_id=deck_id, name=s.image) %}
+  {% if s.style == "full" %}
+    <div class="photo-bg" style="background-image:url('{{ img }}')"></div>
+    <div class="photo-shade"></div>
+    <div class="photo-text">
+      <i></i>
+      <h2 data-edit="title">{{ s.title }}</h2>
+      <p data-edit="text">{{ s.text }}</p>
+    </div>
+  {% elif s.style == "framed" %}
+    <h3 class="head" data-edit="title">{{ s.title }}</h3>
+    <div class="frame {% if s.text %}with-caption{% endif %}" style="background-image:url('{{ img }}')"></div>
+    <p class="caption" data-edit="text">{{ s.text }}</p>
+  {% else %}
+    <div class="half" style="background-image:url('{{ img }}')"></div>
+    <div class="side">
+      <i></i>
+      <h2 data-edit="title">{{ s.title }}</h2>
+      {% set lines = s.text.splitlines()|select|list %}
+      {% if lines|length > 1 %}
+        <ul class="bullets">{% for l in lines %}<li>{{ l }}</li>{% endfor %}</ul>
+      {% else %}<p data-edit="text">{{ s.text }}</p>{% endif %}
+    </div>
+  {% endif %}
+
+{% elif s.layout == "video" %}
+  <h3 class="head" data-edit="title">{{ s.title }}</h3>
+  <div class="media {% if s.caption %}with-caption{% endif %}">
+    {% if s.file %}
+      <video src="{{ url_for('media', deck_id=deck_id, name=s.file) }}#t=0.5" controls preload="metadata"></video>
+    {% elif s.youtube %}
+      <iframe src="https://www.youtube-nocookie.com/embed/{{ s.youtube }}" title="{{ s.title }}" loading="lazy"
+              allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe>
+    {% else %}
+      <a class="link-video" href="{{ s.url }}" target="_blank" rel="noopener"><span>â–¶</span>Open video</a>
+    {% endif %}
+  </div>
+  <p class="caption" data-edit="caption">{{ s.caption }}</p>
+
+{% elif s.layout == "closing" %}
+  <div class="deco"></div>
+  <h1 data-edit="title">{{ s.title }}</h1>
+  <div class="rule"></div>
+  <p class="sub" data-edit="subtitle">{{ s.subtitle }}</p>
+{% endif %}
+{% if s.audio %}
+  <audio class="slide-audio" src="{{ url_for('media', deck_id=deck_id, name=s.audio) }}" preload="none" controls></audio>
+{% endif %}
+{% if s.layout not in ("title", "section", "closing") and not (s.layout == "photo" and s.style == "full") %}
+  <div class="foot"><span>{{ deck.title }}</span><span>{{ n }} / {{ deck.slides|length }}</span></div>
+{% endif %}
+</div>

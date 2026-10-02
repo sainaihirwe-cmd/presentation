@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ deck.title }} · SlideGen</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='slides.css') }}">
+  <style>
+    :root {
+      --bg: #{{ theme.bg }}; --bg2: #{{ theme.bg2 }}; --hero1: #{{ theme.hero1 }}; --hero2: #{{ theme.hero2 }};
+      --text: #{{ theme.text }}; --muted: #{{ theme.muted }}; --accent: #{{ theme.accent }};
+      --accent2: #{{ theme.accent2 }}; --hero-text: #{{ theme.hero_text }};
+      --title-font: "{{ theme.title_font }}", "Segoe UI", sans-serif;
+      --body-font: "{{ theme.body_font }}", "Segoe UI", sans-serif;
+    }
+  </style>
+</head>
+<body class="deck-page">
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('index') }}"><span class="logo">▣</span> SlideGen</a>
+    <div class="deck-meta">
+      <b>{{ deck.title }}</b>
+      <span>{{ deck.slides|length }} slides ·
+        {% if deck.source_url %}from <a href="{{ deck.source_url }}" target="_blank" rel="noopener"><u>{{ deck.source }}</u></a>
+        {% elif deck.source %}from {{ deck.source }}{% endif %}</span>
+    </div>
+    <div class="actions">
+      <div class="theme-pills">
+        {% for key, t in themes.items() %}
+          <a href="{{ url_for('view_deck', deck_id=deck_id, theme=key) }}" title="{{ t.name }}"
+             class="pill {% if key == theme_key %}on{% endif %}"
+             style="background:linear-gradient(135deg,#{{ t.hero1 }},#{{ t.hero2 }})"></a>
+        {% endfor %}
+      </div>
+      <button class="btn" id="edit-toggle" title="Click any text on a slide to change it">✎ Edit text</button>
+      <button class="btn" data-add-after="">＋ Add media</button>
+      <button class="btn" id="present">▶ Present</button>
+      <a class="btn primary" href="{{ url_for('download', deck_id=deck_id, theme=theme_key) }}">⬇ Download .pptx</a>
+    </div>
+  </header>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}<div class="toast">{% for m in messages %}<div>{{ m }}</div>{% endfor %}</div>{% endif %}
+  {% endwith %}
+
+  {% if deck.cover or deck.music %}
+  <div class="chips">
+    {% if deck.cover %}
+      <form method="post" action="{{ url_for('remove_media', deck_id=deck_id, theme=theme_key) }}" class="chip">
+        🖼 Cover photo <input type="hidden" name="what" value="cover"><button title="Remove cover photo">✕</button>
+      </form>
+    {% endif %}
+    {% if deck.music %}
+      <form method="post" action="{{ url_for('remove_media', deck_id=deck_id, theme=theme_key) }}" class="chip">
+        🎵 Background music
+        <audio src="{{ url_for('media', deck_id=deck_id, name=deck.music) }}" controls preload="none"></audio>
+        <input type="hidden" name="what" value="music"><button title="Remove music">✕</button>
+      </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <p class="edit-hint" id="edit-hint" hidden>✎ Editing: click any text on a slide, type, then click outside to save. Clear a bullet to remove it.</p>
+
+  <main class="grid" id="grid">
+    {% for s in deck.slides %}
+      {% set n = loop.index %}
+      <figure class="thumb" data-index="{{ loop.index0 }}">
+        {% include "slide.html" %}
+        <figcaption>
+          <span>{{ n }} · {{ s.layout|capitalize }}{% if s.audio %} · 🔊{% endif %}{% if s.notes %} · 📝{% endif %}</span>
+          <span class="tools">
+            {% set act = url_for('move_slide', deck_id=deck_id, index=loop.index0, theme=theme_key) %}
+            {% if not loop.first %}<form method="post" action="{{ act }}"><input type="hidden" name="dir" value="up"><button class="mini" title="Move earlier">↑</button></form>{% endif %}
+            {% if not loop.last %}<form method="post" action="{{ act }}"><input type="hidden" name="dir" value="down"><button class="mini" title="Move later">↓</button></form>{% endif %}
+            {% if s.audio %}
+              <form method="post" action="{{ url_for('remove_media', deck_id=deck_id, theme=theme_key) }}">
+                <input type="hidden" name="what" value="audio"><input type="hidden" name="index" value="{{ loop.index0 }}">
+                <button class="mini" title="Remove this slide's audio">🔇</button>
+              </form>
+            {% endif %}
+            {% if not loop.last %}<button class="mini" data-add-after="{{ n }}" title="Add a video, photo or audio after this slide">＋</button>{% endif %}
+            <form method="post" action="{{ url_for('delete_slide', deck_id=deck_id, index=loop.index0, theme=theme_key) }}"
+                  onsubmit="return confirm('Delete slide {{ n }}?')">
+              <button class="mini danger" title="Delete slide">✕</button>
+            </form>
+          </span>
+        </figcaption>
+      </figure>
+    {% endfor %}
+  </main>
+
+  {# ------------------------------------------------------------ add media dialog #}
+  <dialog id="media-dialog">
+    <form method="post" enctype="multipart/form-data" action="{{ url_for('add_media', deck_id=deck_id) }}" id="media-form">
+      <input type="hidden" name="theme" value="{{ theme_key }}">
+      <input type="hidden" name="kind" value="video" id="kind">
+      <h2>Add media</h2>
+
+      <div class="tabs" id="kind-tabs">
+        <button type="button" data-kind="video" class="on">🎬 Video</button>
+        <button type="button" data-kind="photo">🖼 Photo</button>
+        <button type="button" data-kind="audio">🎵 Audio</button>
+      </div>
+
+      <section data-kind="video">
+        <div class="tabs small">
+          <label><input type="radio" name="vsource" value="file" checked> Upload file</label>
+          <label><input type="radio" name="vsource" value="url"> YouTube / link</label>
+        </div>
+        <label class="field" data-vsource="file">Video file <small>({{ video_types }})</small>
+          <input type="file" name="file" accept="{{ video_types }},video/*">
+        </label>
+        <label class="field" data-vsource="url" hidden>Video link
+          <input type="url" name="url" placeholder="https://www.youtube.com/watch?v=…">
+        </label>
+        <label class="field">Slide title <input type="text" name="title" placeholder="e.g. Product demo" maxlength="80"></label>
+        <label class="field">Caption <small>(optional)</small>
+          <input type="text" name="text" placeholder="A short line shown under the video" maxlength="140"></label>
+      </section>
+
+      <section data-kind="photo" hidden>
+        <label class="field">Photo <small>({{ image_types }})</small>
+          <input type="file" name="file" accept="{{ image_types }},image/*">
+        </label>
+        <div class="field">Design
+          <div class="styles">
+            {% for key, label in [("full", "Full screen"), ("left", "Photo left"), ("right", "Photo right"), ("framed", "Framed"), ("cover", "Cover background")] %}
+            <label class="style-opt"><input type="radio" name="style" value="{{ key }}" {% if loop.first %}checked{% endif %}>
+              <span class="mock m-{{ key }}"><i></i><b></b></span>{{ label }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        <div data-not-cover>
+          <label class="field">Slide title <input type="text" name="title" placeholder="e.g. Our team in the field" maxlength="80"></label>
+          <label class="field">Text <small>(optional · for "Photo left/right", each line becomes a bullet)</small>
+            <textarea name="text" rows="3" maxlength="600"></textarea></label>
+        </div>
+      </section>
+
+      <section data-kind="audio" hidden>
+        <label class="field">Audio file <small>({{ audio_types }})</small>
+          <input type="file" name="file" accept="{{ audio_types }},audio/*">
+        </label>
+        <label class="field">Use it as
+          <select name="target">
+            <option value="music">Background music for the whole presentation</option>
+            {% for s in deck.slides %}<option value="{{ loop.index0 }}">Audio on slide {{ loop.index }} · {{ s.title|truncate(36) }}</option>{% endfor %}
+          </select>
+        </label>
+      </section>
+
+      <label class="field" id="position">Position
+        <select name="after" id="add-after">
+          {% for s in deck.slides %}{% if not loop.last %}
+            <option value="{{ loop.index }}" {% if loop.revindex == 2 %}selected{% endif %}>After slide {{ loop.index }} · {{ s.title|truncate(40) }}</option>
+          {% endif %}{% endfor %}
+        </select>
+      </label>
+
+      <div class="dialog-actions">
+        <button type="button" class="btn" id="media-cancel">Cancel</button>
+        <button type="submit" class="btn primary" id="media-submit">Add</button>
+      </div>
+    </form>
+  </dialog>
+
+  {# ------------------------------------------------------------------ presenter #}
+  <div class="presenter" id="presenter" hidden>
+    <div class="stage" id="stage"></div>
+    <div class="notes" id="notes" hidden></div>
+    <div class="hint">← → navigate · N speaker notes · M music on/off · Esc exit</div>
+  </div>
+  {% if deck.music %}<audio id="music" src="{{ url_for('media', deck_id=deck_id, name=deck.music) }}" loop preload="auto"></audio>{% endif %}
+
+<script>
+  const deckId = {{ deck_id|tojson }};
+  const notes = {{ deck.slides|map(attribute='notes', default='')|list|tojson }};
+  const slides = [...document.querySelectorAll('.thumb .slide')];
+  const presenter = document.getElementById('presenter'), stage = document.getElementById('stage');
+  const notesBox = document.getElementById('notes'), music = document.getElementById('music');
+  let current = 0, editing = false;
+
+  // ---- presenter
+  function show(i, dir = 1) {
+    current = Math.max(0, Math.min(slides.length - 1, i));
+    stage.innerHTML = '';
+    const s = slides[current].cloneNode(true);
+    s.classList.add(dir >= 0 ? 'enter-next' : 'enter-prev');
+    s.querySelectorAll('[contenteditable]').forEach(e => e.removeAttribute('contenteditable'));
+    stage.appendChild(s);
+    s.querySelector('.slide-audio')?.play().catch(() => {});   // slide narration starts automatically
+    notesBox.textContent = notes[current] || 'No speaker notes for this slide.';
+  }
+  function open(i) {
+    presenter.hidden = false; show(i);
+    music?.play().catch(() => {});
+    presenter.requestFullscreen?.().catch(() => {});
+  }
+  function close() {
+    presenter.hidden = true; stage.innerHTML = '';
+    music?.pause();
+    if (document.fullscreenElement) document.exitFullscreen();
+  }
+  document.getElementById('present').onclick = () => open(0);
+  document.querySelectorAll('.thumb').forEach(t => t.onclick = e => {
+    if (!editing && !e.target.closest('figcaption')) open(+t.dataset.index);
+  });
+  stage.onclick = e => { if (!e.target.closest('video, audio, .media')) show(current + 1); };
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && !presenter.hidden) close(); });
+  document.addEventListener('keydown', e => {
+    if (presenter.hidden) return;
+    if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(current + 1, 1); }
+    if (['ArrowLeft', 'PageUp'].includes(e.key)) show(current - 1, -1);
+    if (e.key === 'n' || e.key === 'N') notesBox.hidden = !notesBox.hidden;
+    if ((e.key === 'm' || e.key === 'M') && music) music.paused ? music.play() : music.pause();
+    if (e.key === 'Escape') close();
+  });
+
+  // ---- edit text in place
+  const editBtn = document.getElementById('edit-toggle');
+  editBtn.onclick = () => {
+    editing = !editing;
+    document.body.classList.toggle('editing', editing);
+    document.getElementById('edit-hint').hidden = !editing;
+    editBtn.textContent = editing ? '✓ Done editing' : '✎ Edit text';
+    document.querySelectorAll('.thumb [data-edit]').forEach(el => {
+      if (editing) { el.setAttribute('contenteditable', 'plaintext-only'); el.dataset.orig = el.textContent; }
+      else el.removeAttribute('contenteditable');
+    });
+    if (!editing) location.reload();  // re-render so layouts and footers reflect the edits
+  };
+  document.addEventListener('keydown', e => {
+    if (e.target.matches?.('[contenteditable]') && e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+  });
+  document.addEventListener('focusout', async e => {
+    const el = e.target;
+    if (!el.matches?.('[data-edit][contenteditable]')) return;
+    const value = el.textContent.trim();
+    if (value === (el.dataset.orig || '').trim()) return;
+    const index = el.closest('.thumb').dataset.index;
+    const res = await fetch(`/deck/${deckId}/slide/${index}/edit`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({field: el.dataset.edit, value})
+    });
+    el.classList.add(res.ok ? 'saved' : 'save-error');
+    setTimeout(() => el.classList.remove('saved', 'save-error'), 1200);
+    if (res.ok) el.dataset.orig = value;
+  });
+
+  // ---- add media dialog
+  const dialog = document.getElementById('media-dialog'), form = document.getElementById('media-form');
+  function setKind(kind) {
+    form.kind.value = kind;
+    document.querySelectorAll('#kind-tabs button').forEach(b => b.classList.toggle('on', b.dataset.kind === kind));
+    form.querySelectorAll('section[data-kind]').forEach(sec => {
+      const on = sec.dataset.kind === kind;
+      sec.hidden = !on;
+      // disabled fields aren't submitted, so only the visible tab's fields are sent
+      sec.querySelectorAll('input, select, textarea').forEach(i => i.disabled = !on);
+    });
+    updateFields();
+  }
+  function updateFields() {
+    const kind = form.kind.value;
+    const cover = kind === 'photo' && form.querySelector('[name=style]:checked:not(:disabled)')?.value === 'cover';
+    document.getElementById('position').hidden = kind === 'audio' || cover;
+    form.querySelector('[data-not-cover]').hidden = !(kind === 'photo' && !cover);
+    const src = form.querySelector('[name=vsource]:checked').value;
+    form.querySelectorAll('[data-vsource]').forEach(f => {
+      f.hidden = f.dataset.vsource !== src;
+      if (kind === 'video') f.querySelector('input').disabled = f.hidden;
+    });
+  }
+  document.querySelectorAll('#kind-tabs button').forEach(b => b.onclick = () => setKind(b.dataset.kind));
+  form.querySelectorAll('[name=vsource], [name=style]').forEach(r => r.onchange = updateFields);
+  document.querySelectorAll('[data-add-after]').forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    if (b.dataset.addAfter) document.getElementById('add-after').value = b.dataset.addAfter;
+    setKind(form.kind.value); dialog.showModal();
+  });
+  document.getElementById('media-cancel').onclick = () => dialog.close();
+  form.addEventListener('submit', e => {
+    const sec = form.querySelector(`section[data-kind="${form.kind.value}"]`);
+    const file = sec.querySelector('input[type=file]:not(:disabled)');
+    const url = sec.querySelector('[name=url]:not(:disabled)');
+    if (!(file && file.files.length) && !(url && url.value.trim())) {
+      e.preventDefault(); alert('Choose a file' + (form.kind.value === 'video' ? ' or paste a video link.' : '.')); return;
+    }
+    const b = document.getElementById('media-submit'); b.textContent = 'Uploading…'; b.disabled = true;
+  });
+  setKind('video');
+</script>
+</body>
+</html>

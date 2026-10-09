@@ -10,7 +10,7 @@ import * as Sharing from 'expo-sharing';
 import { Directory, File, Paths } from 'expo-file-system';
 
 // SlideGen runs on a server (Render); this app shows it full screen on the phone.
-const DEFAULT_URL = 'https://slidegen.onrender.com';
+const DEFAULT_URL = 'https://slidegen-9nge.onrender.com';
 const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
 const C = { bg: '#0b1020', card: '#151c33', line: '#2d3758', text: '#e5e9f5', muted: '#a3acc8', accent: '#8b5cf6' };

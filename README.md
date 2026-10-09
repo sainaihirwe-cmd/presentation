@@ -34,6 +34,34 @@ The new APK is `android/app/build/outputs/apk/release/app-release.apk`. The buil
 `slidegen/`, `templates/` and `static/` into the app, so the phone always runs the same code as
 the website. On the phone, `.pptx` downloads go to the Downloads folder.
 
+## Expo app (Expo Go and EAS)
+
+`mobile/` is an Expo app that shows your **online** SlideGen (for example on Render) full screen.
+It asks for the SlideGen address, and the site password if you set one, the first time it opens.
+Downloads open the phone's share sheet, where you can save the .pptx to Drive or open it. The
+phone needs internet, and SlideGen must be deployed first (see "Deploy on Render").
+
+**Try it in Expo Go:** install Expo Go from the Play Store, then on the PC:
+
+```
+cd mobile
+npm install
+npx expo start --tunnel
+```
+
+Scan the QR code with Expo Go. `--tunnel` works even when the phone and PC are on different
+networks, so you don't need to type an IP address.
+
+**Build an installable APK with EAS** (free Expo account, builds in the cloud):
+
+```
+cd mobile
+npx eas-cli@latest login
+npx eas-cli@latest build -p android --profile preview
+```
+
+When it finishes, EAS shows a link and QR code. Open it on the phone to download and install the APK.
+
 ## Use it on your phone (as an app)
 
 SlideGen is an installable web app: put it online once, then open it on any phone with a normal

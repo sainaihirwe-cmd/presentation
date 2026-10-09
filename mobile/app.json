@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "SlideGen",
+    "slug": "slidegen",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.slidegen.web"
+    },
+    "android": {
+      "package": "com.slidegen.web",
+      "adaptiveIcon": {
+        "backgroundColor": "#7C3AED",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-sharing"
+    ],
+    "backgroundColor": "#0b1020"
+  }
+}

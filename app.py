@@ -20,7 +20,7 @@ import uuid
 from pathlib import Path
 
 from flask import (Flask, abort, flash, jsonify, redirect, render_template, request,
-                   send_file, url_for)
+                   send_file, send_from_directory, url_for)
 from werkzeug.utils import secure_filename
 
 from slidegen import THEMES, build_deck, parse_document, render_pptx, wiki
@@ -47,10 +47,14 @@ ALLOW_KEY_FORM = os.environ.get("ALLOW_KEY_FORM", "0" if ON_SERVER else "1") == 
 SITE_PASSWORD = os.environ.get("SITE_PASSWORD", "")
 
 
+# phones fetch the app manifest, icons and service worker without the password
+PUBLIC_ENDPOINTS = {"manifest", "service_worker", "static"}
+
+
 @app.before_request
 def require_password():
     """Optional site-wide password (HTTP basic auth) so strangers can't spend your API key."""
-    if not SITE_PASSWORD:
+    if not SITE_PASSWORD or request.endpoint in PUBLIC_ENDPOINTS:
         return None
     auth = request.authorization
     if auth and hmac.compare_digest(auth.password or "", SITE_PASSWORD):
@@ -460,6 +464,21 @@ def download(deck_id):
     render_pptx(deck, out, theme, media_dir=MEDIA / deck_id)
     filename = secure_filename(deck["title"])[:60] or "presentation"
     return send_file(out, as_attachment=True, download_name=f"{filename}.pptx")
+
+
+# ---------------------------------------------------------------- installable app (PWA)
+@app.get("/manifest.webmanifest")
+def manifest():
+    return send_from_directory(app.static_folder, "manifest.webmanifest",
+                               mimetype="application/manifest+json")
+
+
+@app.get("/sw.js")
+def service_worker():
+    # served from the site root so it controls every page
+    resp = send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript")
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
 
 
 if __name__ == "__main__":

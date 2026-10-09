@@ -12,6 +12,24 @@ python make_sample.py          # optional: creates samples/project_report.docx
 python app.py                  # then open http://127.0.0.1:5000
 ```
 
+## Use it on your phone (as an app)
+
+SlideGen is an installable web app: put it online once, then open it on any phone with a normal
+web address. No IP address, and the phone does not need to be on your computer's Wi-Fi.
+
+1. **Put it online (free) with Render.** Push this folder to GitHub, sign in at
+   https://render.com with GitHub, choose **New → Blueprint**, and pick this repository.
+   Render reads `render.yaml` and gives you an address like `https://slidegen.onrender.com`.
+   In the Render dashboard, set `SITE_PASSWORD` (and optionally `ANTHROPIC_API_KEY`).
+2. **Install it on the phone.** Open that address on the phone, then:
+   - **Android (Chrome):** menu **⋮** → **Add to Home screen / Install app**.
+   - **iPhone (Safari):** **Share** → **Add to Home Screen**.
+
+SlideGen then has its own icon and opens full screen like a normal app. It needs mobile data
+or Wi-Fi, because the slides are made on the server. On Render's free plan the app sleeps after
+about 15 minutes without visitors. The next visit takes up to a minute to start, and decks
+saved on the server are cleared when it restarts, so download the .pptx files you want to keep.
+
 ## Create slides
 
 - **📄 From a document**: drop in a file, pick a design, click **Generate slides**.

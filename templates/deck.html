@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ deck.title }} · SlideGen</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  {% include "_pwa_head.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='slides.css') }}">
   <style>
     :root {

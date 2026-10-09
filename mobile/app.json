@@ -24,6 +24,11 @@
       "expo-secure-store",
       "expo-sharing"
     ],
-    "backgroundColor": "#0b1020"
+    "backgroundColor": "#0b1020",
+    "extra": {
+      "eas": {
+        "projectId": "98693c26-e566-4e30-96e4-42c593b08ebe"
+      }
+    }
   }
 }

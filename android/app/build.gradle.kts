@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("com.chaquo.python")
@@ -19,11 +21,25 @@ android {
         }
     }
 
+    // Release key in android/keystore.properties (git-ignored; back it up: updates need the same key).
+    // Without it the APK is signed with the debug key, which Play Protect tends to block.
+    val keystoreFile = rootProject.file("keystore.properties")
+    signingConfigs {
+        if (keystoreFile.exists()) {
+            create("release") {
+                val props = Properties().apply { keystoreFile.inputStream().use { load(it) } }
+                storeFile = rootProject.file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            // signed with the debug key so the APK installs directly on a phone
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 

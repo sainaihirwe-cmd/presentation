@@ -30,7 +30,7 @@ cd android
 gradlew assembleRelease
 ```
 
-The new APK is `android/app/build/outputs/apk/release/app-release.apk`. The build copies `app.py`,
+The new APK is `android/app/build/outputs/apk/release/app-release.apk`. It is signed with the release key in `android/slidegen-release.jks` (password in `android/keystore.properties`). Both are git-ignored, so back them up: phones only accept updates signed with the same key. The build copies `app.py`,
 `slidegen/`, `templates/` and `static/` into the app, so the phone always runs the same code as
 the website. On the phone, `.pptx` downloads go to the Downloads folder.
 

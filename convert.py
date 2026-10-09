@@ -1,4 +1,4 @@
-"""Command-line version: python convert.py my_document.docx [--theme aurora] [-o out.pptx]"""
+"""Command-line version: python convert.py my_document.docx [--theme aurora] [--slides 10] [-o out.pptx]"""
 
 import argparse
 from pathlib import Path
@@ -10,12 +10,13 @@ def main():
     ap = argparse.ArgumentParser(description="Convert a document into a designed PowerPoint deck.")
     ap.add_argument("document")
     ap.add_argument("--theme", default="midnight", choices=sorted(THEMES))
+    ap.add_argument("--slides", type=int, help="total number of slides (default: as many as the document needs)")
     ap.add_argument("-o", "--output")
     args = ap.parse_args()
 
     src = Path(args.document)
     out = Path(args.output) if args.output else src.with_suffix(f".{args.theme}.pptx")
-    deck = build_deck(parse_document(src), fallback_title=src.stem.replace("_", " ").title())
+    deck = build_deck(parse_document(src), fallback_title=src.stem.replace("_", " ").title(), slides=args.slides)
     render_pptx(deck, out, args.theme)
     print(f"{len(deck['slides'])} slides -> {out}")
     for i, s in enumerate(deck["slides"], 1):

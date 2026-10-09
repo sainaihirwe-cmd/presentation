@@ -83,6 +83,10 @@ saved on the server are cleared when it restarts, so download the .pptx files yo
 ## Create slides
 
 - **📄 From a document**: drop in a file, pick a design, click **Generate slides**.
+  - **Number of slides**: *Auto* makes as many slides as the document needs. Pick a number (5–30,
+    counting the title and closing slides) to get exactly that many: fewer keeps the opening, the
+    conclusion and each topic's main slide; more spreads the points over more slides. A short
+    document may give fewer slides than asked, and SlideGen tells you so.
 - **✨ From a prompt**, two ways:
   - **🌍 Free (Wikipedia)**, no account or key: type a topic ("Solar energy", "History of
     Rwanda"), choose the number of slides and the language (English, Français, Kinyarwanda,
@@ -125,7 +129,7 @@ saved on the server are cleared when it restarts, so download the .pptx files yo
 ## Use the command line
 
 ```
-python convert.py samples/project_report.docx --theme aurora
+python convert.py samples/project_report.docx --theme aurora --slides 10
 python convert.py notes.md --theme forest -o my_talk.pptx
 ```
 

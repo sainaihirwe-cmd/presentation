@@ -34,6 +34,13 @@
         <div class="drop-title" id="drop-title">Drop your document here or <u>browse</u></div>
         <div class="drop-sub">Supported: {{ formats }} · up to 25 MB</div>
       </label>
+      <label class="field doc-slides">Number of slides
+        <select name="slides">
+          <option value="auto" selected>Auto (as many as the document needs)</option>
+          {% for n in [5, 8, 10, 12, 15, 20, 25, 30] %}<option value="{{ n }}">{{ n }} slides</option>{% endfor %}
+        </select>
+        <small>Counts the title and closing slides. Fewer slides keeps the key points; more spreads them out.</small>
+      </label>
       <input type="hidden" name="theme" class="theme-value">
       <button type="submit" class="btn primary big">Generate slides →</button>
     </form>

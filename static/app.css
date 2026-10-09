@@ -129,6 +129,8 @@ dialog h2 { margin: 0 0 16px; font-size: 20px; }
 .field { display: block; font-size: 14px; color: #a3acc8; margin-bottom: 12px; }
 .field[hidden] { display: none; }
 .field small { color: #6b7594; }
+.doc-slides { max-width: 380px; margin: 22px auto 0; text-align: left; color: #c7cde0; font-size: 15px; }
+.doc-slides small { display: block; margin-top: 6px; font-size: 13px; }
 .field input, .field select {
   display: block; width: 100%; margin-top: 6px; padding: 9px 11px; border-radius: 9px;
   background: #0b1020; border: 1px solid #2d3758; color: #e5e9f5; font: inherit;

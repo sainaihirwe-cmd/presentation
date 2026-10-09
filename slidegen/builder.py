@@ -20,7 +20,26 @@ MAX_TABLE_ROWS = 8
 MAX_TABLE_COLS = 6
 
 
-def build_deck(blocks, fallback_title="Presentation"):
+def build_deck(blocks, fallback_title="Presentation", slides=None):
+    """`slides`: total number of slides wanted (title and closing included), or None for
+    as many as the content needs. The deck may end up shorter when the document is short."""
+    deck = _build(blocks, fallback_title, MAX_BULLETS)
+    if slides:
+        target = max(3, slides)
+        # too few: spread the same points over more slides, fewer bullets on each
+        per_slide = MAX_BULLETS
+        while len(deck["slides"]) < target and per_slide > 2:
+            per_slide -= 1
+            deck = _build(blocks, fallback_title, per_slide)
+        if len(deck["slides"]) > target:
+            _trim(deck["slides"], target)
+    for s in deck["slides"]:
+        s.pop("_group", None)
+        s.pop("_rank", None)
+    return deck
+
+
+def _build(blocks, fallback_title, per_slide):
     blocks = [b for b in blocks if b.get("text") or b.get("rows")]
     title, subtitle, blocks = _extract_title(blocks, fallback_title)
     sections = _split_sections(blocks)
@@ -29,8 +48,9 @@ def build_deck(blocks, fallback_title="Presentation"):
 
     section_titles = [s["title"] for s in sections if s["title"]]
     if len(section_titles) >= 3:
-        slides.append({"layout": "agenda", "title": "Agenda", "items": section_titles[:8]})
+        slides.append({"layout": "agenda", "title": "Agenda", "items": section_titles[:8], "_rank": 2})
 
+    group_id = 0
     for section in sections:
         # Sections with sub-headings get their own divider slide,
         # numbered to match the agenda.
@@ -40,16 +60,46 @@ def build_deck(blocks, fallback_title="Presentation"):
             intro = "" if lead["title"] else _first_sentence(lead["content"])
             slides.append({
                 "layout": "section", "title": section["title"],
-                "number": f"{number:02d}", "subtitle": intro,
+                "number": f"{number:02d}", "subtitle": intro, "_rank": 1,
             })
             if intro:  # used as subtitle, don't repeat it
                 section["groups"][0]["content"] = _drop_first_sentence(section["groups"][0]["content"])
         for group in section["groups"]:
             heading = group["title"] or section["title"] or "Overview"
-            slides.extend(_content_slides(heading, group["content"]))
+            group_id += 1
+            for n, slide in enumerate(_content_slides(heading, group["content"], per_slide)):
+                # rank for trimming: spill-over "(cont.)" slides go first, a topic's first slide last
+                slide["_rank"] = 0 if slide["title"].endswith("(cont.)") else (4 if n == 0 else 3)
+                slide["_group"] = group_id
+                slides.append(slide)
 
     slides.append({"layout": "closing", "title": "Thank You", "subtitle": "Questions & Discussion"})
     return {"title": title, "slides": slides}
+
+
+def _trim(slides, target):
+    """Drop the least important slides until `target` remain; title and closing always stay.
+    The opening topic and the last topic (usually the conclusion) go last. Within a rank, the
+    topic with the most slides loses one first, then cuts are spread evenly through the deck."""
+    groups = [s["_group"] for s in slides if "_group" in s]
+    if groups:
+        for s in slides:
+            if s.get("_rank") == 4 and s["_group"] in (groups[0], groups[-1]):
+                s["_rank"] = 5
+    pos = {id(s): n for n, s in enumerate(slides)}
+    while len(slides) > target:
+        removable = [i for i, s in enumerate(slides) if "_rank" in s]
+        if not removable:
+            return
+        sizes = {}
+        for s in slides:
+            if "_group" in s:
+                sizes[s["_group"]] = sizes.get(s["_group"], 0) + 1
+
+        def importance(i):
+            gap = pos[id(slides[i + 1])] - pos[id(slides[i - 1])]  # what removing it leaves uncovered
+            return (slides[i]["_rank"], -sizes.get(slides[i].get("_group"), 0), gap, -i)
+        del slides[min(removable, key=importance)]
 
 
 # ------------------------------------------------------------------ structure
@@ -99,12 +149,12 @@ def _split_sections(blocks):
 
 # -------------------------------------------------------------- content slides
 
-def _content_slides(heading, content):
+def _content_slides(heading, content, per_slide=MAX_BULLETS):
     slides, items = [], []
 
     def flush_items():
         if items:
-            slides.extend(_item_slides(heading, items))
+            slides.extend(_item_slides(heading, items, per_slide))
             items.clear()
 
     for block in content:
@@ -124,7 +174,7 @@ def _content_slides(heading, content):
     return slides
 
 
-def _item_slides(heading, items):
+def _item_slides(heading, items, per_slide=MAX_BULLETS):
     items = [i for i in (s.strip() for s in items) if len(i) > 2]
     if not items:
         return []
@@ -140,7 +190,7 @@ def _item_slides(heading, items):
                  "stats": [{"value": v, "label": _shorten(l, 14)} for v, l in stats]}]
 
     bullets = [_shorten(i, MAX_WORDS) for i in items]
-    chunks = _chunk(bullets, MAX_BULLETS)
+    chunks = _chunk(bullets, per_slide)
     slides = []
     for n, chunk in enumerate(chunks):
         t = heading if n == 0 else f"{heading} (cont.)"

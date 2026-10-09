@@ -165,9 +165,14 @@ def convert():
         return redirect(url_for("index"))
 
     fallback = re.sub(r"[_-]+", " ", Path(name).stem).title()
-    deck = build_deck(blocks, fallback_title=fallback)
+    wanted = request.form.get("slides", "auto")
+    wanted = int(wanted) if wanted.isdigit() else None
+    deck = build_deck(blocks, fallback_title=fallback, slides=wanted)
     deck["source"] = file.filename
     _save(deck_id, deck)
+    if wanted and len(deck["slides"]) < wanted:
+        flash(f"This document has enough content for {len(deck['slides'])} slides, "
+              f"so the deck is shorter than the {wanted} you asked for.")
     return redirect(url_for("view_deck", deck_id=deck_id, theme=theme))
 
 

@@ -171,7 +171,7 @@
   <div class="presenter" id="presenter" hidden>
     <div class="stage" id="stage"></div>
     <div class="notes" id="notes" hidden></div>
-    <div class="hint">← → navigate · N speaker notes · M music on/off · Esc exit</div>
+    <div class="hint"><span class="keys-hint">← → navigate · N speaker notes · M music on/off · Esc exit</span><span class="touch-hint">Tap or swipe to change slides · Back to exit</span></div>
   </div>
   {% if deck.music %}<audio id="music" src="{{ url_for('media', deck_id=deck_id, name=deck.music) }}" loop preload="auto"></audio>{% endif %}
 
@@ -209,6 +209,13 @@
     if (!editing && !e.target.closest('figcaption')) open(+t.dataset.index);
   });
   stage.onclick = e => { if (!e.target.closest('video, audio, .media')) show(current + 1); };
+  // phones: swipe left for the next slide, right for the previous one
+  let touchX = null;
+  stage.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, {passive: true});
+  stage.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 50) show(current + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+  });
   document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && !presenter.hidden) close(); });
   document.addEventListener('keydown', e => {
     if (presenter.hidden) return;

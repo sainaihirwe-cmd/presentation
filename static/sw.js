@@ -1,7 +1,7 @@
 // SlideGen service worker: makes the site installable as a phone app.
 // Pages always come from the server (decks change); styles and icons are cached,
 // and a small offline page is shown when the phone has no internet.
-const CACHE = "slidegen-v1";
+const CACHE = "slidegen-v2";
 const SHELL = ["/static/app.css", "/static/slides.css", "/static/offline.html",
                "/static/icons/icon-192.png", "/static/icons/icon-512.png"];
 

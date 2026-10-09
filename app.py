@@ -31,10 +31,12 @@ from slidegen.parser import SUPPORTED
 from slidegen.themes import DEFAULT_THEME
 
 BASE = Path(__file__).parent
-UPLOADS = BASE / "uploads"
-OUTPUTS = BASE / "outputs"
+# SLIDEGEN_DATA moves uploads and decks to a writable folder (the Android app sets it)
+DATA = Path(os.environ.get("SLIDEGEN_DATA") or BASE)
+UPLOADS = DATA / "uploads"
+OUTPUTS = DATA / "outputs"
 MEDIA = OUTPUTS / "media"
-UPLOADS.mkdir(exist_ok=True)
+UPLOADS.mkdir(parents=True, exist_ok=True)
 MEDIA.mkdir(parents=True, exist_ok=True)
 
 app = Flask(__name__)
@@ -45,6 +47,8 @@ app.config["MAX_CONTENT_LENGTH"] = 300 * 1024 * 1024  # 300 MB, room for videos
 ON_SERVER = bool(os.environ.get("RENDER") or os.environ.get("PORT"))
 ALLOW_KEY_FORM = os.environ.get("ALLOW_KEY_FORM", "0" if ON_SERVER else "1") == "1"
 SITE_PASSWORD = os.environ.get("SITE_PASSWORD", "")
+# explicit: Python on Android has no .pptx entry in its mimetypes table
+PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
 
 # phones fetch the app manifest, icons and service worker without the password
@@ -463,7 +467,7 @@ def download(deck_id):
     out = OUTPUTS / f"{deck_id}-{theme}.pptx"
     render_pptx(deck, out, theme, media_dir=MEDIA / deck_id)
     filename = secure_filename(deck["title"])[:60] or "presentation"
-    return send_file(out, as_attachment=True, download_name=f"{filename}.pptx")
+    return send_file(out, as_attachment=True, download_name=f"{filename}.pptx", mimetype=PPTX_MIME)
 
 
 # ---------------------------------------------------------------- installable app (PWA)

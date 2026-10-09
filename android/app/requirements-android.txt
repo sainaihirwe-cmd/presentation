@@ -1,0 +1,7 @@
+# Same as ../../requirements.txt minus anthropic/pydantic (no Android build of pydantic-core;
+# slidegen/ai_http.py calls Claude without them) and gunicorn (the app uses Werkzeug's server).
+flask>=3.0
+python-docx>=1.1
+python-pptx>=1.0
+pypdf>=4.0
+pillow>=10.0

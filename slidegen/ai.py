@@ -18,11 +18,15 @@ import threading
 from pathlib import Path
 from typing import List, Literal
 
-import anthropic
-from pydantic import BaseModel
+try:
+    import anthropic
+    from pydantic import BaseModel
+except ImportError:  # Android app: pydantic has no Android build, so ai_http calls the API directly
+    anthropic = None
+    BaseModel = object
 
 MODEL = "claude-opus-5-5"
-ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+ENV_FILE = Path(os.environ.get("SLIDEGEN_DATA") or Path(__file__).resolve().parent.parent) / ".env"
 
 
 class AIError(Exception):
@@ -247,6 +251,13 @@ def generate_deck(prompt, n_slides=10, audience="", tone="", progress=None):
     exe = find_claude_cli()
     if exe and not has_api_key():
         return to_deck(_generate_with_cli(exe, "\n".join(request), progress))
+
+    if anthropic is None:
+        from .ai_http import generate_over_http
+        key = os.environ.get("ANTHROPIC_API_KEY") or _env_key()
+        if not key:
+            raise AIError("No Anthropic API key is set. Paste your key in the 🔑 API key box first.")
+        return to_deck(generate_over_http(key, "\n".join(request), progress))
 
     try:
         response = _client().beta.messages.parse(

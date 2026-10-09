@@ -12,6 +12,28 @@ python make_sample.py          # optional: creates samples/project_report.docx
 python app.py                  # then open http://127.0.0.1:5000
 ```
 
+## Android app (APK, works without a PC)
+
+The APK contains SlideGen itself, Python included, so the phone needs no computer, server,
+IP address or Wi-Fi to make slides from documents and save .pptx files. Wikipedia and Claude
+modes still need mobile data or Wi-Fi, and Claude needs an API key pasted in the 🔑 box. The
+"uses your Claude login" option is PC-only.
+
+**Install:** copy `SlideGen.apk` to the phone (USB cable, Google Drive, WhatsApp to yourself...),
+open it, and allow "Install unknown apps" when Android asks. Needs Android 7 or newer on a
+64-bit phone. The first start takes a few seconds while SlideGen unpacks itself.
+
+**Build it again** after changing the code (needs Android Studio installed):
+
+```
+cd android
+gradlew assembleRelease
+```
+
+The new APK is `android/app/build/outputs/apk/release/app-release.apk`. The build copies `app.py`,
+`slidegen/`, `templates/` and `static/` into the app, so the phone always runs the same code as
+the website. On the phone, `.pptx` downloads go to the Downloads folder.
+
 ## Use it on your phone (as an app)
 
 SlideGen is an installable web app: put it online once, then open it on any phone with a normal
